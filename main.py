@@ -25,7 +25,7 @@ app.add_middleware(
 )
 
 def init_db():
-    conn = sqlite3.connect('inventory.db')
+    conn = sqlite3.connect('/tmp/inventory.db')
     c = conn.cursor()
     # Existing stock table
     c.execute('''CREATE TABLE IF NOT EXISTS stock (item TEXT PRIMARY KEY, quantity INTEGER)''')
