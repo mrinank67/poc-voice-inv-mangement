@@ -2,162 +2,409 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Voice Bahi-Khata</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
+      :root {
+        --bg-start: #0f172a;
+        --bg-end: #1e293b;
+        --primary: #3b82f6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+      }
+
+      * {
+        box-sizing: border-box;
+        font-family: 'Inter', sans-serif;
+      }
+
       body {
-        font-family: Arial, sans-serif;
+        margin: 0;
+        min-height: 100dvh;
+        background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+        color: var(--text-main);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        height: 100vh;
-        margin: 0;
-        background-color: #f4f4f9;
+        overflow: hidden;
       }
+
       h1 {
-        color: #333;
+        font-weight: 800;
+        margin-bottom: 2rem;
         text-align: center;
+        background: linear-gradient(to right, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
-      button {
-        padding: 20px 40px;
-        font-size: 20px;
-        background-color: #4caf50;
+
+      .container {
+        width: 100%;
+        max-width: 400px;
+        padding: 2rem;
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        text-align: center;
+        transition: opacity 0.4s ease, transform 0.4s ease;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .fade-out {
+        opacity: 0;
+        pointer-events: none;
+        transform: scale(0.95);
+      }
+
+      /* Form Elements */
+      input {
+        width: 100%;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: white;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s ease;
+      }
+
+      input:focus {
+        border-color: var(--primary);
+      }
+
+      button.btn-primary {
+        width: 100%;
+        padding: 1rem;
+        background: var(--primary);
         color: white;
         border: none;
-        border-radius: 10px;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
         cursor: pointer;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: background 0.3s ease, transform 0.1s ease;
+      }
 
-        /* --- MOBILE FIXES --- */
+      button.btn-primary:active {
+        transform: scale(0.98);
+      }
+
+      .error-msg {
+        color: var(--danger);
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        min-height: 20px;
+      }
+
+      /* App View Specifics */
+      .app-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 2rem;
+      }
+
+      .app-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      .logout-btn {
+        background: transparent;
+        border: 1px solid var(--glass-border);
+        color: var(--text-muted);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+      }
+
+      .logout-btn:active {
+        background: rgba(255,255,255,0.1);
+      }
+
+      /* Microphone Button */
+      .mic-container {
+        position: relative;
+        width: 160px;
+        height: 160px;
+        margin: 2rem auto;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .mic-btn {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border: none;
+        color: white;
+        font-size: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        z-index: 10;
+        transition: transform 0.2s ease, background 0.3s ease, box-shadow 0.3s ease;
+        
+        /* Mobile fixes */
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
         touch-action: none;
       }
-      /* Make it look like a physical button being pressed */
-      button:active {
-        transform: scale(0.96);
+
+      .mic-btn.recording {
+        background: linear-gradient(135deg, var(--danger), #b91c1c);
+        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+        transform: scale(0.95);
       }
-      #status {
-        font-size: 18px;
-        color: #555;
-        margin-bottom: 20px;
+
+      /* Pulse Animation */
+      .pulse-ring {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.5);
+        z-index: 1;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .recording ~ .pulse-ring {
+        animation: pulse 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.8; }
+        100% { transform: scale(1.6); opacity: 0; }
+      }
+
+      .status-text {
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin-top: 1rem;
         min-height: 24px;
       }
-      #result {
-        font-size: 20px;
-        font-weight: bold;
-        text-align: center;
-        max-width: 90%;
-        line-height: 1.5;
-        white-space: pre-wrap; /* Allows the multi-line receipts from the backend */
+
+      .result-box {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 16px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1.6;
+        min-height: 80px;
+        white-space: pre-wrap;
       }
+      
+      .text-success { color: var(--success); }
+      .text-danger { color: #f87171; }
     </style>
   </head>
   <body>
-    <h1>🗣️ Voice Bahi-Khata</h1>
-    <button id="recordBtn">🎙️ Hold to Speak</button>
-    <div id="status">Ready.</div>
-    <div id="result"></div>
 
-    <script>
-      let mediaRecorder;
-      let audioChunks = [];
-      let activeStream; // We need to track the stream to kill it later
+    <!-- LOGIN VIEW -->
+    <div id="login-view" class="container">
+      <h1>Shopkeeper Login</h1>
+      <div id="login-error" class="error-msg"></div>
+      <form id="login-form">
+        <input type="email" id="email" placeholder="Email address" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+      </form>
+    </div>
 
+    <!-- APP VIEW -->
+    <div id="app-view" class="container hidden">
+      <div class="app-header">
+        <h2>Bahi-Khata</h2>
+        <button id="logout-btn" class="logout-btn">Log out</button>
+      </div>
+
+      <div class="mic-container">
+        <button id="recordBtn" class="mic-btn">🎙️</button>
+        <div class="pulse-ring"></div>
+      </div>
+      
+      <div id="status" class="status-text">Hold to Speak</div>
+      <div id="result" class="result-box">Your transactions will appear here...</div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyBQp_c628yQ1yx77Kil1b8i7NhCufn1Ye0",
+        authDomain: "poc-inventory-management-98303.firebaseapp.com",
+        projectId: "poc-inventory-management-98303",
+        storageBucket: "poc-inventory-management-98303.firebasestorage.app",
+        messagingSenderId: "540287007110",
+        appId: "1:540287007110:web:adb349a426d939372d9407",
+        measurementId: "G-8596N1ZCJC"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      // UI Elements
+      const loginView = document.getElementById("login-view");
+      const appView = document.getElementById("app-view");
+      const loginForm = document.getElementById("login-form");
+      const loginError = document.getElementById("login-error");
+      const logoutBtn = document.getElementById("logout-btn");
+
+      // App Elements
       const recordBtn = document.getElementById("recordBtn");
       const status = document.getElementById("status");
       const resultDiv = document.getElementById("result");
 
-      // --- DESKTOP AND MOBILE EVENT LISTENERS ---
+      let currentToken = null;
+
+      // --- AUTHENTICATION LOGIC ---
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          currentToken = await user.getIdToken();
+          loginView.classList.add("hidden");
+          appView.classList.remove("hidden");
+        } else {
+          currentToken = null;
+          appView.classList.add("hidden");
+          loginView.classList.remove("hidden");
+        }
+      });
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        loginError.innerText = "";
+        const btn = document.getElementById("login-btn");
+        btn.innerText = "Signing in...";
+        
+        try {
+          await signInWithEmailAndPassword(
+            auth, 
+            document.getElementById("email").value, 
+            document.getElementById("password").value
+          );
+        } catch (error) {
+          loginError.innerText = "Invalid email or password.";
+        } finally {
+          btn.innerText = "Sign In";
+        }
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        signOut(auth);
+      });
+
+      // --- RECORDING LOGIC ---
+      let mediaRecorder;
+      let audioChunks = [];
+      let activeStream;
+
       const startRecording = async (e) => {
         if (e.cancelable) e.preventDefault();
+        if (!currentToken) return;
 
         try {
-          // 1. Only turn on the mic when the button is actively pressed
-          activeStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-          });
+          activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           mediaRecorder = new MediaRecorder(activeStream);
           audioChunks = [];
 
-          mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-          };
+          mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
 
           mediaRecorder.onstop = async () => {
-            // 2. CRITICAL FIX: Kill the mic connection completely to remove the Chrome indicator
             activeStream.getTracks().forEach((track) => track.stop());
+            
+            // Re-fetch token just in case it expired during long session
+            currentToken = await auth.currentUser.getIdToken();
 
             status.innerText = "⏳ Processing...";
             const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-
             const formData = new FormData();
             formData.append("audio", audioBlob, "recording.webm");
 
-            const isLocal =
-              window.location.hostname === "localhost" ||
-              window.location.hostname === "127.0.0.1";
-            const backendUrl = isLocal
-              ? "http://localhost:8000/process_voice"
-              : "/process_voice";
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            const backendUrl = isLocal ? "http://localhost:8000/process_voice" : "/process_voice";
 
             try {
               const response = await fetch(backendUrl, {
                 method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${currentToken}`
+                },
                 body: formData,
               });
+
+              if (response.status === 401) {
+                signOut(auth);
+                return;
+              }
 
               const data = await response.json();
 
               if (data.status === "success") {
                 status.innerText = `Heard: "${data.raw_text}"`;
                 resultDiv.innerText = data.message;
-                resultDiv.style.color = "green";
+                resultDiv.className = "result-box text-success";
               } else {
                 status.innerText = "❌ Error";
-                resultDiv.innerText = data.message;
-                resultDiv.style.color = "red";
+                resultDiv.innerText = data.message || "Unknown error occurred.";
+                resultDiv.className = "result-box text-danger";
               }
             } catch (error) {
-              console.error("Error:", error);
               status.innerText = "❌ Connection Failed";
               resultDiv.innerText = "Could not connect to the server.";
-              resultDiv.style.color = "red";
+              resultDiv.className = "result-box text-danger";
             }
           };
 
           mediaRecorder.start();
           status.innerText = "🔴 Listening... (Sun raha hoon)";
           resultDiv.innerText = "";
-          recordBtn.style.backgroundColor = "#ff4444";
+          recordBtn.classList.add("recording");
         } catch (err) {
-          console.error("Microphone access denied:", err);
-          status.innerText =
-            "❌ Microphone access denied. Please allow permissions.";
+          status.innerText = "❌ Microphone access denied.";
         }
       };
 
       const stopRecording = (e) => {
         if (e.cancelable) e.preventDefault();
-
         if (mediaRecorder && mediaRecorder.state === "recording") {
           mediaRecorder.stop();
-          recordBtn.style.backgroundColor = "#4CAF50";
+          recordBtn.classList.remove("recording");
         }
       };
 
-      // Desktop Mouse Events
+      // Event Listeners for Recording Button
       recordBtn.addEventListener("mousedown", startRecording);
       recordBtn.addEventListener("mouseup", stopRecording);
       recordBtn.addEventListener("mouseleave", stopRecording);
 
-      // Mobile Touch Events
-      recordBtn.addEventListener("touchstart", startRecording, {
-        passive: false,
-      });
+      recordBtn.addEventListener("touchstart", startRecording, { passive: false });
       recordBtn.addEventListener("touchend", stopRecording);
       recordBtn.addEventListener("touchcancel", stopRecording);
     </script>

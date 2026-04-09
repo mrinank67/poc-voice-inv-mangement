@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 import json
 from thefuzz import process
@@ -6,7 +6,7 @@ from groq import Groq
 import os
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 load_dotenv()
@@ -46,23 +46,6 @@ def init_firebase():
 
 db = init_firebase()
 
-def init_default_stock():
-    # Only seed the default values if they don't exist
-    # This allows future customization since we won't overwrite existing db values.
-    stock_ref = db.collection('stock')
-    
-    defaults = {
-        'toothpaste': 50,
-        'soap': 100,
-        'noodles': 40
-    }
-    
-    for item, qty in defaults.items():
-        doc = stock_ref.document(item).get()
-        if not doc.exists:
-            stock_ref.document(item).set({'quantity': qty, 'item': item})
-
-init_default_stock()
 
 brand_to_item_map = {
     "colgate": "toothpaste",
@@ -77,8 +60,21 @@ brand_to_item_map = {
 standard_items = list(brand_to_item_map.keys())
 
 @app.post("/process_voice")
-async def process_voice(audio: UploadFile = File(...)):
+async def process_voice(audio: UploadFile = File(...), authorization: str = Header(None)):
     
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    token = authorization.split("Bearer ")[1]
+    try:
+        decoded_token = auth.verify_id_token(token)
+        uid = decoded_token['uid']
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid Authentication Token")
+
+    user_stock_ref = db.collection('users').document(uid).collection('stock')
+    user_udhaar_ref = db.collection('users').document(uid).collection('udhaar')
+
     # --- STEP 1: Speech-to-Text via Groq (Whisper) ---
     try:
         audio_bytes = await audio.read()
@@ -164,7 +160,7 @@ async def process_voice(audio: UploadFile = File(...)):
                 results.append("❌ Kiska khaata dekhna hai? (Please specify a name).")
                 continue
                 
-            docs = db.collection('udhaar').where(filter=FieldFilter('customer_name', '==', customer_name)).stream()
+            docs = user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream()
             
             dues_map = {}
             for doc in docs:
@@ -185,7 +181,7 @@ async def process_voice(audio: UploadFile = File(...)):
                 results.append("❌ Kiska khaata clear karna hai? (Please specify a name).")
                 continue
                 
-            docs = list(db.collection('udhaar').where(filter=FieldFilter('customer_name', '==', customer_name)).stream())
+            docs = list(user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream())
             
             if docs:
                 # Delete all rows belonging to this customer
@@ -207,14 +203,17 @@ async def process_voice(audio: UploadFile = File(...)):
         best_match, score = process.extractOne(raw_item, standard_items)
         standard_item = brand_to_item_map[best_match] if score > 70 else raw_item
         
-        stock_doc_ref = db.collection('stock').document(standard_item)
+        stock_doc_ref = user_stock_ref.document(standard_item)
         stock_doc = stock_doc_ref.get()
         
         if not stock_doc.exists:
-            results.append(f"❌ {standard_item} not found in inventory.")
-            continue
-            
-        current_qty = stock_doc.to_dict().get('quantity', 0)
+            if action == "increase":
+                current_qty = 0
+            else:
+                results.append(f"❌ {standard_item} not found in inventory.")
+                continue
+        else:
+            current_qty = stock_doc.to_dict().get('quantity', 0)
         
         # Edge Case: Inquiry
         if action == "inquiry":
@@ -241,7 +240,7 @@ async def process_voice(audio: UploadFile = File(...)):
         
         # NEW: Handle Udhaar Logging
         if action == "decrease" and customer_name:
-            db.collection('udhaar').add({
+            user_udhaar_ref.add({
                 'customer_name': customer_name,
                 'item': standard_item,
                 'quantity': qty,
