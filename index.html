@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Voice Bahi-Khata</title>
+    <title>BolKhata</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
       rel="stylesheet"
@@ -65,16 +65,12 @@
         transition:
           opacity 0.4s ease,
           transform 0.4s ease;
+        max-height: 90vh;
+        overflow-y: auto;
       }
 
       .hidden {
         display: none !important;
-      }
-
-      .fade-out {
-        opacity: 0;
-        pointer-events: none;
-        transform: scale(0.95);
       }
 
       /* Form Elements */
@@ -112,6 +108,41 @@
 
       button.btn-primary:active {
         transform: scale(0.98);
+      }
+
+      button.btn-secondary {
+        width: 100%;
+        padding: 0.9rem;
+        background: white;
+        color: #333;
+        border: none;
+        border-radius: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      button.btn-secondary:active {
+        transform: scale(0.98);
+      }
+
+      button.btn-text {
+        width: 100%;
+        padding: 0.75rem;
+        background: transparent;
+        color: var(--text-muted);
+        border: none;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: color 0.2s ease;
+      }
+
+      button.btn-text:hover {
+        color: white;
       }
 
       .error-msg {
@@ -251,21 +282,60 @@
   <body>
     <!-- LOGIN VIEW -->
     <div id="login-view" class="container">
-      <h1>Shopkeeper Login</h1>
+      <h1>BolKhata</h1>
       <div id="login-error" class="error-msg"></div>
-      <form id="login-form">
-        <input type="email" id="email" placeholder="Email address" required />
-        <input type="password" id="password" placeholder="Password" required />
-        <button type="submit" id="login-btn" class="btn-primary">
-          Sign In
+
+      <!-- MAIN OPTIONS (Phone & Google) -->
+      <div id="auth-main-options">
+        <label style="display:block; text-align:left; margin-bottom:8px; color:var(--text-muted); font-size:0.9rem;">Sign in with Phone</label>
+        <div style="display: flex; gap: 8px; margin-bottom: 1rem;">
+          <input type="text" id="phone-country" value="+91" style="flex: 0 0 60px; text-align: center; margin-bottom: 0;" />
+          <input type="tel" id="phone-number" placeholder="9876543210" style="margin-bottom: 0;" />
+        </div>
+        <button id="send-sms-btn" class="btn-primary">Send OTP</button>
+        <div id="recaptcha-container" style="margin-top: 10px;"></div>
+
+        <div style="margin: 1.5rem 0; color: var(--text-muted); font-size: 0.9rem; display:flex; align-items:center;">
+            <div style="flex:1; height:1px; background:var(--glass-border);"></div>
+            <div style="margin:0 10px;">OR</div>
+            <div style="flex:1; height:1px; background:var(--glass-border);"></div>
+        </div>
+
+        <button id="google-login-btn" class="btn-secondary" style="margin-bottom: 1rem;">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width:20px; margin-right:8px;">
+          Continue with Google
         </button>
-      </form>
+
+        <button id="show-email-btn" class="btn-text">Use Email & Password Instead</button>
+      </div>
+
+      <!-- OTP VERIFICATION VIEW -->
+      <div id="auth-otp-view" class="hidden">
+        <label style="display:block; text-align:left; margin-bottom:8px; color:var(--text-muted); font-size:0.9rem;">Enter 6-digit OTP</label>
+        <input type="number" id="otp-code" placeholder="123456" />
+        <button id="verify-otp-btn" class="btn-primary" style="margin-bottom: 1rem;">Verify</button>
+        <button id="cancel-otp-btn" class="btn-text">Cancel / Back</button>
+      </div>
+
+      <!-- EMAIL LOGIC VIEW -->
+      <div id="auth-email-view" class="hidden">
+        <h3 id="email-form-title" style="margin-top:0; font-weight:600;">Sign In</h3>
+        <form id="login-form">
+          <input type="email" id="email" placeholder="Email address" required />
+          <input type="password" id="password" placeholder="Password" required />
+          <button type="submit" id="login-btn" class="btn-primary" style="margin-bottom:1rem;">Sign In</button>
+        </form>
+        <div style="display:flex; justify-content:space-between; font-size:0.9rem;">
+          <button id="toggle-email-mode-btn" class="btn-text" style="padding:0; width:auto;">Create an account</button>
+          <button id="back-to-main-btn" class="btn-text" style="padding:0; width:auto;">Back</button>
+        </div>
+      </div>
     </div>
 
     <!-- APP VIEW -->
     <div id="app-view" class="container hidden">
       <div class="app-header">
-        <h2>Bahi-Khata</h2>
+        <h2>BolKhata</h2>
         <button id="logout-btn" class="logout-btn">Log out</button>
       </div>
 
@@ -285,41 +355,45 @@
       import {
         getAuth,
         signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
         onAuthStateChanged,
         signOut,
+        RecaptchaVerifier,
+        signInWithPhoneNumber,
+        GoogleAuthProvider,
+        signInWithPopup
       } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
 
-      const firebaseConfig = {
-        apiKey: "AIzaSyBQp_c628yQ1yx77Kil1b8i7NhCufn1Ye0",
-        authDomain: "poc-inventory-management-98303.firebaseapp.com",
-        projectId: "poc-inventory-management-98303",
-        storageBucket: "poc-inventory-management-98303.firebasestorage.app",
-        messagingSenderId: "540287007110",
-        appId: "1:540287007110:web:adb349a426d939372d9407",
-        measurementId: "G-8596N1ZCJC",
-      };
+      const isLocalEnv = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const configUrl = isLocalEnv ? "http://localhost:8000/config" : "/config";
+      
+      const configRes = await fetch(configUrl);
+      const firebaseConfig = await configRes.json();
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
 
-      // UI Elements
+      // DOM Elements
       const loginView = document.getElementById("login-view");
       const appView = document.getElementById("app-view");
-      const loginForm = document.getElementById("login-form");
       const loginError = document.getElementById("login-error");
-      const logoutBtn = document.getElementById("logout-btn");
-
-      // App Elements
-      const recordBtn = document.getElementById("recordBtn");
-      const status = document.getElementById("status");
-      const resultDiv = document.getElementById("result");
+      
+      const authMainOptions = document.getElementById("auth-main-options");
+      const authOtpView = document.getElementById("auth-otp-view");
+      const authEmailView = document.getElementById("auth-email-view");
 
       let currentToken = null;
 
-      // --- AUTHENTICATION LOGIC ---
+      // --- 1. GLOBAL AUTH OBSERVER ---
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           currentToken = await user.getIdToken();
+          // Reset UI
+          authMainOptions.classList.remove("hidden");
+          authOtpView.classList.add("hidden");
+          authEmailView.classList.add("hidden");
+          loginError.innerText = "";
+
           loginView.classList.add("hidden");
           appView.classList.remove("hidden");
         } else {
@@ -329,33 +403,145 @@
         }
       });
 
-      loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        loginError.innerText = "";
-        const btn = document.getElementById("login-btn");
-        btn.innerText = "Signing in...";
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        signOut(auth);
+      });
 
-        try {
-          await signInWithEmailAndPassword(
-            auth,
-            document.getElementById("email").value,
-            document.getElementById("password").value,
-          );
-        } catch (error) {
-          loginError.innerText = "Invalid email or password.";
-        } finally {
-          btn.innerText = "Sign In";
+      // --- 2. PHONE AUTHENTICATION ---
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response) => {
+          // reCAPTCHA solved
         }
       });
 
-      logoutBtn.addEventListener("click", () => {
-        signOut(auth);
+      let confirmationResult = null;
+
+      document.getElementById('send-sms-btn').addEventListener('click', async () => {
+          loginError.innerText = "";
+          const country = document.getElementById('phone-country').value;
+          const phone = document.getElementById('phone-number').value.trim();
+          
+          if (phone.length < 10) {
+              loginError.innerText = "Please enter a valid phone number.";
+              return;
+          }
+          
+          const fullPhone = country + phone;
+
+          try {
+              const btn = document.getElementById('send-sms-btn');
+              btn.innerText = "Sending...";
+              
+              const appVerifier = window.recaptchaVerifier;
+              confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+              
+              // Transition to OTP view
+              authMainOptions.classList.add('hidden');
+              authOtpView.classList.remove('hidden');
+              btn.innerText = "Send OTP";
+          } catch (err) {
+              loginError.innerText = err.message || "Failed to send SMS. Ensure number is valid.";
+              console.error(err);
+              document.getElementById('send-sms-btn').innerText = "Send OTP";
+              if(window.recaptchaVerifier) window.recaptchaVerifier.render().then(widgetId => grecaptcha.reset(widgetId));
+          }
       });
+
+      document.getElementById('verify-otp-btn').addEventListener('click', async () => {
+          const code = document.getElementById('otp-code').value.trim();
+          loginError.innerText = "";
+          const btn = document.getElementById('verify-otp-btn');
+          btn.innerText = "Verifying...";
+          try {
+              await confirmationResult.confirm(code);
+              // Will trigger onAuthStateChanged globally
+          } catch (err) {
+              loginError.innerText = "Invalid OTP code.";
+          } finally {
+              btn.innerText = "Verify";
+          }
+      });
+
+      document.getElementById('cancel-otp-btn').addEventListener('click', () => {
+          authOtpView.classList.add('hidden');
+          authMainOptions.classList.remove('hidden');
+          loginError.innerText = "";
+          document.getElementById('otp-code').value = "";
+      });
+
+      // --- 3. GOOGLE AUTHENTICATION ---
+      document.getElementById('google-login-btn').addEventListener('click', async () => {
+          const provider = new GoogleAuthProvider();
+          loginError.innerText = "";
+          try {
+              await signInWithPopup(auth, provider);
+          } catch (err) {
+              loginError.innerText = err.message || "Google sign-in failed.";
+          }
+      });
+
+      // --- 4. EMAIL AUTHENTICATION ---
+      let isEmailSignup = false;
+      document.getElementById('show-email-btn').addEventListener('click', () => {
+          authMainOptions.classList.add('hidden');
+          authEmailView.classList.remove('hidden');
+          loginError.innerText = "";
+      });
+
+      document.getElementById('back-to-main-btn').addEventListener('click', () => {
+          authEmailView.classList.add('hidden');
+          authMainOptions.classList.remove('hidden');
+          loginError.innerText = "";
+          document.getElementById('email').value = "";
+          document.getElementById('password').value = "";
+      });
+
+      document.getElementById('toggle-email-mode-btn').addEventListener('click', (e) => {
+          e.preventDefault();
+          isEmailSignup = !isEmailSignup;
+          document.getElementById('email-form-title').innerText = isEmailSignup ? "Create Account" : "Sign In";
+          document.getElementById('login-btn').innerText = isEmailSignup ? "Create automatically & Sign In" : "Sign In";
+          document.getElementById('toggle-email-mode-btn').innerText = isEmailSignup ? "Already have an account?" : "Create an account";
+      });
+
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          loginError.innerText = "";
+          
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+          const btn = document.getElementById("login-btn");
+          btn.innerText = "Processing...";
+          
+          try {
+              if (isEmailSignup) {
+                  await createUserWithEmailAndPassword(auth, email, password);
+              } else {
+                  await signInWithEmailAndPassword(auth, email, password);
+              }
+          } catch(err) {
+              // Format standard firebase errors beautifully
+              if (err.code === "auth/email-already-in-use") {
+                  loginError.innerText = "Account already exists! Please click 'Already have an account' to sign in.";
+              } else if (err.code === "auth/weak-password") {
+                  loginError.innerText = "Password is too weak. (Min 6 characters)";
+              } else {
+                  loginError.innerText = err.message;
+              }
+          } finally {
+              btn.innerText = isEmailSignup ? "Create automatically & Sign In" : "Sign In";
+          }
+      });
+
 
       // --- RECORDING LOGIC ---
       let mediaRecorder;
       let audioChunks = [];
       let activeStream;
+      const recordBtn = document.getElementById("recordBtn");
+      const status = document.getElementById("status");
+      const resultDiv = document.getElementById("result");
 
       const startRecording = async (e) => {
         if (e.cancelable) e.preventDefault();
