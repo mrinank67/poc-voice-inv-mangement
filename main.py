@@ -81,7 +81,7 @@ async def process_voice(audio: UploadFile = File(...), authorization: str = Head
     try:
         decoded_token = auth.verify_id_token(token)
         uid = decoded_token['uid']
-    except Exception as e:
+    except Exception as e:  # noqa: F841
         raise HTTPException(status_code=401, detail="Invalid Authentication Token")
 
     user_stock_ref = db.collection('users').document(uid).collection('stock')
