@@ -157,10 +157,27 @@ async def process_voice(audio: UploadFile = File(...), authorization: str = Head
         raise HTTPException(status_code=500, detail="Failed to understand the intent.")
 
     # --- STEP 3: Standardization & Database Loop ---
+    # Handle LLM returning either a flat object or a transactions array
     transactions = intent.get("transactions", [])
+    if not transactions and "action" in intent:
+        # LLM returned a single flat transaction instead of an array
+        transactions = [intent]
     hinglish_text = intent.get("hinglish_text", hindi_text)
     
-    results = [] 
+    # Structured result groups keyed by action type
+    result_groups = {}
+    errors = []
+
+    def get_group(action_key, title, icon, columns):
+        if action_key not in result_groups:
+            result_groups[action_key] = {
+                "action": action_key,
+                "title": title,
+                "icon": icon,
+                "columns": columns,
+                "rows": []
+            }
+        return result_groups[action_key]
 
     for txn in transactions:
         action = txn.get("action")
@@ -169,123 +186,168 @@ async def process_voice(audio: UploadFile = File(...), authorization: str = Head
 
         # --- Handle Full Inventory ---
         if action == "full_inventory":
+            group = get_group("full_inventory", "Full Inventory", "📦",
+                              ["#", "Item", "Stock"])
             all_docs = user_stock_ref.stream()
-            inventory_lines = []
+            idx = 1
             for doc in all_docs:
                 data = doc.to_dict()
-                inventory_lines.append(f"  • {doc.id.capitalize()}: {data.get('quantity', 0)}")
-            
-            if inventory_lines:
-                results.append("📦 Full Inventory:\n" + "\n".join(inventory_lines))
-            else:
-                results.append("📦 Inventory is empty. No items added yet.")
+                group["rows"].append({
+                    "#": idx,
+                    "Item": doc.id.capitalize(),
+                    "Stock": data.get('quantity', 0)
+                })
+                idx += 1
+            if not group["rows"]:
+                group["empty_message"] = "Inventory is empty. No items added yet."
             continue
 
         # --- Handle Ledger Inquiries ---
         if action == "ledger_inquiry":
             if not customer_name:
-                results.append("❌ Kiska khaata dekhna hai? (Please specify a name).")
+                errors.append("Kiska khaata dekhna hai? (Please specify a name).")
                 continue
-                
+
+            group_key = f"ledger_inquiry_{customer_name}"
+            group = get_group(group_key, f"{customer_name.capitalize()}'s Ledger", "📒",
+                              ["Item", "Quantity Owed"])
+
             docs = user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream()
-            
             dues_map = {}
             for doc in docs:
                 data = doc.to_dict()
                 item_name = data.get('item', 'unknown')
                 dues_map[item_name] = dues_map.get(item_name, 0) + data.get('quantity', 0)
-                
+
             if not dues_map:
-                results.append(f"✅ {customer_name.capitalize()} ka khaata clear hai. (No dues)")
+                group["empty_message"] = f"{customer_name.capitalize()} ka khaata clear hai. No dues!"
             else:
-                dues = ", ".join([f"{qty} {item}" for item, qty in dues_map.items()])
-                results.append(f"📒 {customer_name.capitalize()} owes: {dues}.")
+                for item, qty in dues_map.items():
+                    group["rows"].append({"Item": item.capitalize(), "Quantity Owed": qty})
             continue
 
-        # --- NEW: Handle Clearing Ledgers ---
+        # --- Handle Clearing Ledgers ---
         if action == "clear_ledger":
             if not customer_name:
-                results.append("❌ Kiska khaata clear karna hai? (Please specify a name).")
+                errors.append("Kiska khaata clear karna hai? (Please specify a name).")
                 continue
-                
+
+            group_key = f"clear_ledger_{customer_name}"
+            group = get_group(group_key, "Ledger Cleared", "💰",
+                              ["Customer", "Status"])
+
             docs = list(user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream())
-            
+
             if docs:
-                # Delete all rows belonging to this customer
                 for doc in docs:
                     doc.reference.delete()
-                results.append(f"💰 {customer_name.capitalize()} ka udhaar clear ho gaya! (Account settled).")
+                group["rows"].append({
+                    "Customer": customer_name.capitalize(),
+                    "Status": "✅ Settled"
+                })
             else:
-                results.append(f"ℹ️ {customer_name.capitalize()} ke naam par koi udhaar nahi tha. (No dues found).")
+                group["rows"].append({
+                    "Customer": customer_name.capitalize(),
+                    "Status": "ℹ️ No dues found"
+                })
             continue
 
         # --- Normal Stock Processing ---
         raw_item = txn.get("raw_item")
         if not raw_item:
             continue
-            
+
         raw_item = raw_item.lower()
-        
+
         # Fuzzy Match
         best_match, score = process.extractOne(raw_item, standard_items)
         standard_item = brand_to_item_map[best_match] if score > 70 else raw_item
-        
+
         stock_doc_ref = user_stock_ref.document(standard_item)
         stock_doc = stock_doc_ref.get()
-        
+
         if not stock_doc.exists:
             if action == "increase":
                 current_qty = 0
             else:
-                results.append(f"❌ {standard_item} not found in inventory.")
+                errors.append(f"{standard_item} not found in inventory.")
                 continue
         else:
             current_qty = stock_doc.to_dict().get('quantity', 0)
-        
-        # Edge Case: Inquiry
+
+        # Inquiry
         if action == "inquiry":
-            results.append(f"ℹ️ {standard_item} stock is currently at {current_qty}.")
+            group = get_group("inquiry", "Stock Check", "🔍",
+                              ["Item", "Current Stock"])
+            group["rows"].append({
+                "Item": standard_item.capitalize(),
+                "Current Stock": current_qty
+            })
             continue
 
-        # Edge Case: "ALL"
+        # Quantity
         if raw_qty == "ALL" and action == "decrease":
             qty = current_qty
         else:
             try:
                 qty = int(raw_qty)
             except ValueError:
-                qty = 1 
-        
+                qty = 1
+
         # Calculate new stock
         if action == "decrease":
             new_qty = max(0, current_qty - qty)
         else:
             new_qty = current_qty + qty
-            
+
         # Update Stock DB
-        stock_doc_ref.set({'quantity': new_qty}, merge=True)
-        
-        # NEW: Handle Udhaar Logging
+        stock_doc_ref.set({'quantity': new_qty, 'item': standard_item}, merge=True)
+
+        # Build result row
         if action == "decrease" and customer_name:
+            group = get_group("udhaar_sale", "Credit Sale (Udhaar)", "📒",
+                              ["Item", "Qty", "Previous", "Current", "Customer"])
             user_udhaar_ref.add({
                 'customer_name': customer_name,
                 'item': standard_item,
                 'quantity': qty,
                 'timestamp': firestore.SERVER_TIMESTAMP
             })
-            results.append(f"📒 Wrote {qty} {standard_item} in {customer_name.capitalize()}'s account. (Stock: {new_qty})")
+            group["rows"].append({
+                "Item": standard_item.capitalize(),
+                "Qty": qty,
+                "Previous": current_qty,
+                "Current": new_qty,
+                "Customer": customer_name.capitalize()
+            })
         elif action == "decrease":
-            results.append(f"✅ Sold {qty} {standard_item}. (Stock: {new_qty})")
+            group = get_group("decrease", "Stock Sold", "🛒",
+                              ["Item", "Sold", "Previous", "Current"])
+            group["rows"].append({
+                "Item": standard_item.capitalize(),
+                "Sold": qty,
+                "Previous": current_qty,
+                "Current": new_qty
+            })
         else:
-            results.append(f"📦 Added {qty} {standard_item}. (Stock: {new_qty})")
-    
-    final_message = "\n".join(results)
-    if not final_message:
-        final_message = "No clear actions understood."
+            group = get_group("increase", "Stock Added", "📦",
+                              ["Item", "Added", "Previous", "Current"])
+            group["rows"].append({
+                "Item": standard_item.capitalize(),
+                "Added": qty,
+                "Previous": current_qty,
+                "Current": new_qty
+            })
+
+    result_list = list(result_groups.values())
+
+    if not result_list and not errors:
+        errors.append("Couldn't understand that. Please try speaking again clearly.")
 
     return {
         "status": "success",
-        "message": final_message,
-        "raw_text": hinglish_text, 
+        "results": result_list,
+        "errors": errors,
+        "raw_text": hinglish_text,
         "understood_intent": intent
     }
