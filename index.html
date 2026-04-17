@@ -874,7 +874,7 @@
           <label class="field-label">Phone Number</label>
           <div class="phone-row">
             <input type="text" id="phone-country" value="+91" class="country-code" />
-            <input type="tel" id="phone-number" placeholder="98765 43210" class="phone-input" />
+            <input type="tel" id="phone-number" placeholder="9876543210" class="phone-input" inputmode="numeric" pattern="[0-9]*" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')" />
           </div>
         </div>
         <button id="send-sms-btn" class="btn btn-accent">Send OTP</button>
@@ -1058,6 +1058,10 @@
         }
       });
 
+      $("phone-number").addEventListener("keydown", e => {
+        if (e.key === "Enter") $("send-sms-btn").click();
+      });
+
       $("verify-otp-btn").addEventListener("click", async () => {
         const code = $("otp-code").value.trim();
         loginError.innerText = "";
@@ -1066,6 +1070,10 @@
         try { await confirmationResult.confirm(code); }
         catch { loginError.innerText = "Invalid OTP code."; }
         finally { btn.innerText = "Verify"; }
+      });
+
+      $("otp-code").addEventListener("keydown", e => {
+        if (e.key === "Enter") $("verify-otp-btn").click();
       });
 
       $("cancel-otp-btn").addEventListener("click", () => {
@@ -1204,6 +1212,25 @@
       recordBtn.addEventListener("touchstart", startRecording, { passive: false });
       recordBtn.addEventListener("touchend", stopRecording);
       recordBtn.addEventListener("touchcancel", stopRecording);
+
+      // Spacebar to Record (Desktop)
+      window.addEventListener("keydown", e => {
+        if (e.code === "Space" && !appView.classList.contains("hidden")) {
+          // Ignore if typing in an input/textarea if any exist
+          if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
+          e.preventDefault();
+          if (!recordBtn.classList.contains("recording")) {
+            startRecording(e);
+          }
+        }
+      });
+      window.addEventListener("keyup", e => {
+        if (e.code === "Space" && !appView.classList.contains("hidden")) {
+          if (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA") return;
+          e.preventDefault();
+          stopRecording(e);
+        }
+      });
 
       // ═══════ 6. TABLE RENDERER ═══════
       const numericColumns = new Set(["#", "Stock", "Qty", "Sold", "Added", "Previous", "Current", "Current Stock", "Quantity Owed"]);
