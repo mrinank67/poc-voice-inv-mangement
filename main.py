@@ -12,7 +12,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 
 load_dotenv()
 
-# Setup Groq 
+# Setup Groq
 
 api_key = os.getenv("GROQ_API_KEY")
 groq_client = Groq(api_key=api_key)
@@ -27,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Initialize Firebase Admin
 def init_firebase():
     if not firebase_admin._apps:
@@ -37,13 +38,18 @@ def init_firebase():
             cred = credentials.Certificate(cred_dict)
         else:
             # Fallback to local JSON (for local development)
-            cred_path = "poc-inventory-management-98303-firebase-adminsdk-fbsvc-f8868789db.json"
+            cred_path = (
+                "poc-inventory-management-98303-firebase-adminsdk-fbsvc-f8868789db.json"
+            )
             if not os.path.exists(cred_path):
-                raise Exception("Firebase Credentials not found! Add FIREBASE_SERVICE_ACCOUNT env var or the JSON file.")
+                raise Exception(
+                    "Firebase Credentials not found! Add FIREBASE_SERVICE_ACCOUNT env var or the JSON file."
+                )
             cred = credentials.Certificate(cred_path)
-            
+
         firebase_admin.initialize_app(cred)
     return firestore.client()
+
 
 db = init_firebase()
 
@@ -56,9 +62,10 @@ brand_to_item_map = {
     "lifebuoy": "soap",
     "dettol": "soap",
     "maggi": "noodles",
-    "yippee": "noodles"
+    "yippee": "noodles",
 }
 standard_items = list(brand_to_item_map.keys())
+
 
 @app.get("/config")
 async def get_config():
@@ -69,56 +76,64 @@ async def get_config():
         "storageBucket": os.getenv("FIREBASE_STORAGE_BUCKET"),
         "messagingSenderId": os.getenv("FIREBASE_MESSAGING_SENDER_ID"),
         "appId": os.getenv("FIREBASE_APP_ID"),
-        "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID")
+        "measurementId": os.getenv("FIREBASE_MEASUREMENT_ID"),
     }
 
+
 @app.post("/process_voice")
-async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = File(...), authorization: str = Header(None)):
+async def process_voice(
+    background_tasks: BackgroundTasks,
+    audio: UploadFile = File(...),
+    authorization: str = Header(None),
+):
     start_total = time.time()
-    
+
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized")
-        
+
     token = authorization.split("Bearer ")[1]
     try:
         t0 = time.time()
         decoded_token = auth.verify_id_token(token)
-        uid = decoded_token['uid']
-        print(f"⏱️ Token Verify: {time.time()-t0:.2f}s")
+        uid = decoded_token["uid"]
+        print(f"⏱️ Token Verify: {time.time() - t0:.2f}s")
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid Authentication Token")
 
-    user_stock_ref = db.collection('users').document(uid).collection('stock')
-    user_udhaar_ref = db.collection('users').document(uid).collection('udhaar')
+    user_stock_ref = db.collection("users").document(uid).collection("stock")
+    user_udhaar_ref = db.collection("users").document(uid).collection("udhaar")
 
     # --- STEP 1: Speech-to-Text via Groq (Whisper) ---
     t1 = time.time()
     try:
         audio_bytes = await audio.read()
-        
+
         if len(audio_bytes) < 100:
-            return {"status": "error", "message": "Audio too short. Please hold the button while speaking."}
-            
+            return {
+                "status": "error",
+                "message": "Audio too short. Please hold the button while speaking.",
+            }
+
         transcription = groq_client.audio.transcriptions.create(
-          file=(audio.filename, audio_bytes, audio.content_type), 
-          model="whisper-large-v3",
-          prompt="The user is speaking Hindi or Hinglish regarding shop inventory.",
-          response_format="json",
-          language="hi",
-          temperature=0.0
+            file=(audio.filename, audio_bytes, audio.content_type),
+            model="whisper-large-v3",
+            prompt="The user is speaking Hindi or Hinglish regarding shop inventory.",
+            response_format="json",
+            language="hi",
+            temperature=0.0,
         )
         hindi_text = transcription.text
-        print(f"⏱️ STT (Groq Whisper): {time.time()-t1:.2f}s")
-        print(f"Heard: {hindi_text}") 
-        
+        print(f"⏱️ STT (Groq Whisper): {time.time() - t1:.2f}s")
+        print(f"Heard: {hindi_text}")
+
     except Exception as e:
         print(f"❌ GROQ STT ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=f"STT Error: {str(e)}")
 
     if not hindi_text.strip():
         return {"status": "error", "message": "Could not hear anything clearly."}
-    
-# --- STEP 2: Intent Extraction via Groq (Llama 3) ---
+
+    # --- STEP 2: Intent Extraction via Groq (Llama 3) ---
     t2 = time.time()
     try:
         chat_completion = groq_client.chat.completions.create(
@@ -144,23 +159,20 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
                     - 'hinglish_text': Translate the raw Devanagari input into the Latin alphabet.
                     
                     You MUST return ONLY valid JSON. Do not include any text outside the JSON block.
-                    """
+                    """,
                 },
-                {
-                    "role": "user",
-                    "content": f"Text to process: '{hindi_text}'"
-                }
+                {"role": "user", "content": f"Text to process: '{hindi_text}'"},
             ],
             model="llama-3.1-8b-instant",
             response_format={"type": "json_object"},
-            temperature=0.0
+            temperature=0.0,
         )
-        
+
         json_str = chat_completion.choices[0].message.content
         intent = json.loads(json_str)
-        print(f"⏱️ LLM (Groq Llama3): {time.time()-t2:.2f}s")
+        print(f"⏱️ LLM (Groq Llama3): {time.time() - t2:.2f}s")
         print(f"Understood Intent: {intent}")
-        
+
     except Exception as e:
         print(f"❌ GROQ LLM ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to understand the intent.")
@@ -173,7 +185,7 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
         # LLM returned a single flat transaction instead of an array
         transactions = [intent]
     hinglish_text = intent.get("hinglish_text", hindi_text)
-    
+
     # Structured result groups keyed by action type
     result_groups = {}
     errors = []
@@ -185,7 +197,7 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
                 "title": title,
                 "icon": icon,
                 "columns": columns,
-                "rows": []
+                "rows": [],
             }
         return result_groups[action_key]
 
@@ -196,17 +208,20 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
 
         # --- Handle Full Inventory ---
         if action == "full_inventory":
-            group = get_group("full_inventory", "Full Inventory", "📦",
-                              ["#", "Item", "Stock"])
+            group = get_group(
+                "full_inventory", "Full Inventory", "📦", ["#", "Item", "Stock"]
+            )
             all_docs = user_stock_ref.stream()
             idx = 1
             for doc in all_docs:
                 data = doc.to_dict()
-                group["rows"].append({
-                    "#": idx,
-                    "Item": doc.id.capitalize(),
-                    "Stock": data.get('quantity', 0)
-                })
+                group["rows"].append(
+                    {
+                        "#": idx,
+                        "Item": doc.id.capitalize(),
+                        "Stock": data.get("quantity", 0),
+                    }
+                )
                 idx += 1
             if not group["rows"]:
                 group["empty_message"] = "Inventory is empty. No items added yet."
@@ -214,17 +229,17 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
 
         # --- Handle Clear Entire Inventory ---
         if action == "clear_inventory":
-            group = get_group("clear_inventory", "Inventory Cleared", "🗑️",
-                              ["Action", "Status"])
+            group = get_group(
+                "clear_inventory", "Inventory Cleared", "🗑️", ["Action", "Status"]
+            )
             all_docs = list(user_stock_ref.stream())
-            
+
             if all_docs:
                 for doc in all_docs:
                     doc.reference.delete()
-                group["rows"].append({
-                    "Action": "Delete all items",
-                    "Status": "✅ Cleared"
-                })
+                group["rows"].append(
+                    {"Action": "Delete all items", "Status": "✅ Cleared"}
+                )
             else:
                 group["empty_message"] = "Inventory is already empty."
             continue
@@ -236,21 +251,33 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
                 continue
 
             group_key = f"ledger_inquiry_{customer_name}"
-            group = get_group(group_key, f"{customer_name.capitalize()}'s Ledger", "📒",
-                              ["Item", "Quantity Owed"])
+            group = get_group(
+                group_key,
+                f"{customer_name.capitalize()}'s Ledger",
+                "📒",
+                ["Item", "Quantity Owed"],
+            )
 
-            docs = user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream()
+            docs = user_udhaar_ref.where(
+                filter=FieldFilter("customer_name", "==", customer_name)
+            ).stream()
             dues_map = {}
             for doc in docs:
                 data = doc.to_dict()
-                item_name = data.get('item', 'unknown')
-                dues_map[item_name] = dues_map.get(item_name, 0) + data.get('quantity', 0)
+                item_name = data.get("item", "unknown")
+                dues_map[item_name] = dues_map.get(item_name, 0) + data.get(
+                    "quantity", 0
+                )
 
             if not dues_map:
-                group["empty_message"] = f"{customer_name.capitalize()} ka khaata clear hai. No dues!"
+                group["empty_message"] = (
+                    f"{customer_name.capitalize()} ka khaata clear hai. No dues!"
+                )
             else:
                 for item, qty in dues_map.items():
-                    group["rows"].append({"Item": item.capitalize(), "Quantity Owed": qty})
+                    group["rows"].append(
+                        {"Item": item.capitalize(), "Quantity Owed": qty}
+                    )
             continue
 
         # --- Handle Clearing Ledgers ---
@@ -260,23 +287,27 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
                 continue
 
             group_key = f"clear_ledger_{customer_name}"
-            group = get_group(group_key, "Ledger Cleared", "💰",
-                              ["Customer", "Status"])
+            group = get_group(group_key, "Ledger Cleared", "💰", ["Customer", "Status"])
 
-            docs = list(user_udhaar_ref.where(filter=FieldFilter('customer_name', '==', customer_name)).stream())
+            docs = list(
+                user_udhaar_ref.where(
+                    filter=FieldFilter("customer_name", "==", customer_name)
+                ).stream()
+            )
 
             if docs:
                 for doc in docs:
                     doc.reference.delete()
-                group["rows"].append({
-                    "Customer": customer_name.capitalize(),
-                    "Status": "✅ Settled"
-                })
+                group["rows"].append(
+                    {"Customer": customer_name.capitalize(), "Status": "✅ Settled"}
+                )
             else:
-                group["rows"].append({
-                    "Customer": customer_name.capitalize(),
-                    "Status": "ℹ️ No dues found"
-                })
+                group["rows"].append(
+                    {
+                        "Customer": customer_name.capitalize(),
+                        "Status": "ℹ️ No dues found",
+                    }
+                )
             continue
 
         # --- Normal Stock Processing ---
@@ -300,16 +331,14 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
                 errors.append(f"{standard_item} not found in inventory.")
                 continue
         else:
-            current_qty = stock_doc.to_dict().get('quantity', 0)
+            current_qty = stock_doc.to_dict().get("quantity", 0)
 
         # Inquiry
         if action == "inquiry":
-            group = get_group("inquiry", "Stock Check", "🔍",
-                              ["Item", "Current Stock"])
-            group["rows"].append({
-                "Item": standard_item.capitalize(),
-                "Current Stock": current_qty
-            })
+            group = get_group("inquiry", "Stock Check", "🔍", ["Item", "Current Stock"])
+            group["rows"].append(
+                {"Item": standard_item.capitalize(), "Current Stock": current_qty}
+            )
             continue
 
         # Quantity
@@ -328,43 +357,60 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
             new_qty = current_qty + qty
 
         # Update Stock DB
-        stock_doc_ref.set({'quantity': new_qty, 'item': standard_item}, merge=True)
+        stock_doc_ref.set({"quantity": new_qty, "item": standard_item}, merge=True)
 
         # Build result row
         if action == "decrease" and customer_name:
-            group = get_group("udhaar_sale", "Credit Sale (Udhaar)", "📒",
-                              ["Item", "Qty", "Previous", "Current", "Customer"])
-            user_udhaar_ref.add({
-                'customer_name': customer_name,
-                'item': standard_item,
-                'quantity': qty,
-                'timestamp': firestore.SERVER_TIMESTAMP
-            })
-            group["rows"].append({
-                "Item": standard_item.capitalize(),
-                "Qty": qty,
-                "Previous": current_qty,
-                "Current": new_qty,
-                "Customer": customer_name.capitalize()
-            })
+            group = get_group(
+                "udhaar_sale",
+                "Credit Sale (Udhaar)",
+                "📒",
+                ["Item", "Qty", "Previous", "Current", "Customer"],
+            )
+            user_udhaar_ref.add(
+                {
+                    "customer_name": customer_name,
+                    "item": standard_item,
+                    "quantity": qty,
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                }
+            )
+            group["rows"].append(
+                {
+                    "Item": standard_item.capitalize(),
+                    "Qty": qty,
+                    "Previous": current_qty,
+                    "Current": new_qty,
+                    "Customer": customer_name.capitalize(),
+                }
+            )
         elif action == "decrease":
-            group = get_group("decrease", "Stock Sold", "🛒",
-                              ["Item", "Sold", "Previous", "Current"])
-            group["rows"].append({
-                "Item": standard_item.capitalize(),
-                "Sold": qty,
-                "Previous": current_qty,
-                "Current": new_qty
-            })
+            group = get_group(
+                "decrease", "Stock Sold", "🛒", ["Item", "Sold", "Previous", "Current"]
+            )
+            group["rows"].append(
+                {
+                    "Item": standard_item.capitalize(),
+                    "Sold": qty,
+                    "Previous": current_qty,
+                    "Current": new_qty,
+                }
+            )
         else:
-            group = get_group("increase", "Stock Added", "📦",
-                              ["Item", "Added", "Previous", "Current"])
-            group["rows"].append({
-                "Item": standard_item.capitalize(),
-                "Added": qty,
-                "Previous": current_qty,
-                "Current": new_qty
-            })
+            group = get_group(
+                "increase",
+                "Stock Added",
+                "📦",
+                ["Item", "Added", "Previous", "Current"],
+            )
+            group["rows"].append(
+                {
+                    "Item": standard_item.capitalize(),
+                    "Added": qty,
+                    "Previous": current_qty,
+                    "Current": new_qty,
+                }
+            )
 
     result_list = list(result_groups.values())
 
@@ -373,24 +419,30 @@ async def process_voice(background_tasks: BackgroundTasks, audio: UploadFile = F
 
     # Save to history in background (non-blocking)
     if result_list or errors:
+
         def write_history():
-            user_history_ref = db.collection('users').document(uid).collection('history')
-            user_history_ref.add({
-                'results': result_list,
-                'errors': errors,
-                'timestamp': firestore.SERVER_TIMESTAMP
-            })
+            user_history_ref = (
+                db.collection("users").document(uid).collection("history")
+            )
+            user_history_ref.add(
+                {
+                    "results": result_list,
+                    "errors": errors,
+                    "timestamp": firestore.SERVER_TIMESTAMP,
+                }
+            )
+
         background_tasks.add_task(write_history)
 
-    print(f"⏱️ Firestore DB Ops: {time.time()-t3:.2f}s")
-    print(f"⏱️ TOTAL VOICE PROCESS: {time.time()-start_total:.2f}s")
+    print(f"⏱️ Firestore DB Ops: {time.time() - t3:.2f}s")
+    print(f"⏱️ TOTAL VOICE PROCESS: {time.time() - start_total:.2f}s")
 
     return {
         "status": "success",
         "results": result_list,
         "errors": errors,
         "raw_text": hinglish_text,
-        "understood_intent": intent
+        "understood_intent": intent,
     }
 
 
@@ -401,7 +453,7 @@ def verify_token(authorization: str):
     token = authorization.split("Bearer ")[1]
     try:
         decoded = auth.verify_id_token(token)
-        return decoded['uid']
+        return decoded["uid"]
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid Authentication Token")
 
@@ -409,26 +461,32 @@ def verify_token(authorization: str):
 @app.get("/history")
 async def get_history(authorization: str = Header(None)):
     uid = verify_token(authorization)
-    history_ref = db.collection('users').document(uid).collection('history')
-    docs = history_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(50).stream()
+    history_ref = db.collection("users").document(uid).collection("history")
+    docs = (
+        history_ref.order_by("timestamp", direction=firestore.Query.DESCENDING)
+        .limit(50)
+        .stream()
+    )
 
     entries = []
     for doc in docs:
         data = doc.to_dict()
-        ts = data.get('timestamp')
-        entries.append({
-            "id": doc.id,
-            "results": data.get('results', []),
-            "errors": data.get('errors', []),
-            "timestamp": ts.isoformat() if ts else None
-        })
+        ts = data.get("timestamp")
+        entries.append(
+            {
+                "id": doc.id,
+                "results": data.get("results", []),
+                "errors": data.get("errors", []),
+                "timestamp": ts.isoformat() if ts else None,
+            }
+        )
     return {"history": entries}
 
 
 @app.delete("/history")
 async def clear_history(authorization: str = Header(None)):
     uid = verify_token(authorization)
-    history_ref = db.collection('users').document(uid).collection('history')
+    history_ref = db.collection("users").document(uid).collection("history")
     docs = history_ref.stream()
     for doc in docs:
         doc.reference.delete()
