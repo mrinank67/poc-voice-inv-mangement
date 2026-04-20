@@ -12,16 +12,40 @@ BolKhata prioritizes extreme low latency, ensuring the AI can process Hindi/Hing
 * **Multi-Tenant Security:** Firebase Auth (Phone/OTP, Google, Email) ensures every shopkeeper's inventory and history is strictly siloed and completely private.
 * **Udhaar (Credit) Management:** Automatically routes items to a customer's credit ledger if a name is spoken (e.g., *"Do lux Ramesh ke khaate mein likh do"*).
 * **Smart Dashboard & History:** Returns cleanly formatted tables for every transaction. A sliding drawer keeps track of the last 50 transactions for easy auditing.
+* **Progressive Web App (PWA):** Installable on mobile and desktop with offline shell caching, home screen icon, and standalone app mode — no app store required.
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** Vanilla HTML, CSS, JavaScript (MediaRecorder API)
-* **Backend:** FastAPI (Python)
+* **Frontend:** Vanilla HTML, CSS, JavaScript (modular architecture)
+  * `index.html` — Semantic HTML shell (~130 lines)
+  * `styles.css` — Full design system & responsive styles
+  * `app.js` — Application logic (auth, recording, rendering)
+* **Backend:** FastAPI (Python), deployed as Vercel serverless functions
 * **Database & Auth:** Firebase Firestore & Firebase Authentication
 * **AI Engine:** Groq API
   * STT: `whisper-large-v3`
   * NLP/Intent: `llama-3.1-8b-instant`
 * **Matching Logic:** `thefuzz` (Fuzzy string matching for brand standardization)
+* **PWA:** Service Worker (`sw.js`) + Web App Manifest (`manifest.json`)
+
+## 📁 Project Structure
+
+```text
+bolkhata/
+├── index.html          # HTML shell (semantic markup only)
+├── styles.css          # Design system, components, responsive styles
+├── app.js              # Client-side JS (auth, voice, UI logic)
+├── main.py             # FastAPI backend (voice processing, Firestore)
+├── sw.js               # Service Worker (offline caching)
+├── manifest.json       # PWA manifest (icons, theme, display mode)
+├── vercel.json         # Vercel routing & build config
+├── requirements.txt    # Python dependencies
+├── icons/
+│   ├── icon-192.png    # PWA icon (192×192)
+│   └── icon-512.png    # PWA icon (512×512)
+├── .env                # Environment variables (not committed)
+└── .gitignore
+```
 
 ## 💻 Local Setup Instructions
 
@@ -96,3 +120,20 @@ python -m http.server 8080
 ## ☁️ Deployment
 
 BolKhata is fully production-ready and configured to be deployed natively on **Vercel** as a serverless application using the included `vercel.json` routing configuration. Add your `.env` variables to your Vercel project settings, and your Firebase connection will persist seamlessly globally.
+
+### PWA Installation
+
+Once deployed, users can install BolKhata directly from their browser:
+
+* **Android Chrome:** Tap the "Add to Home Screen" banner or use the browser menu.
+* **iOS Safari:** Tap the Share button → "Add to Home Screen".
+* **Desktop Chrome/Edge:** Click the install icon in the address bar.
+
+The app opens in standalone mode (no browser chrome) and caches the UI shell for instant loading.
+
+## 🔐 Security Notes
+
+* API endpoints are protected by Firebase ID Token verification.
+* The Firebase service account JSON is excluded from Git via `.gitignore`.
+* The reCAPTCHA badge is hidden via CSS but remains functional for phone auth.
+* Environment variables should be rotated periodically via your hosting provider's dashboard (e.g., Vercel Environment Variables).
