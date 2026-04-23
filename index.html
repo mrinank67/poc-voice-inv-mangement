@@ -68,7 +68,16 @@
       <div id="auth-otp" class="hidden">
         <div class="field-group">
           <label class="field-label">Verification Code</label>
-          <input type="number" id="otp-code" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" />
+          <p class="otp-sub">Enter the 6-digit code sent to your phone</p>
+          <div class="otp-inputs" id="otp-inputs">
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="0" autocomplete="one-time-code" />
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="1" />
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="2" />
+            <span class="otp-dash">–</span>
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="3" />
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="4" />
+            <input type="text" inputmode="numeric" maxlength="1" class="otp-digit" data-index="5" />
+          </div>
         </div>
         <button id="verify-otp-btn" class="btn btn-accent" style="margin-bottom:10px;">Verify</button>
         <button id="cancel-otp-btn" class="btn btn-ghost">← Back</button>

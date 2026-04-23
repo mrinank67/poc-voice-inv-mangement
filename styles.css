@@ -428,6 +428,91 @@ input::placeholder {
 /* ══════════════════════════════════════
    PHONE INPUT ROW
    ══════════════════════════════════════ */
+
+/* ══════════════════════════════════════
+   OTP DIGIT INPUTS
+   ══════════════════════════════════════ */
+.otp-sub {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  margin-bottom: 16px;
+}
+
+.otp-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.otp-dash {
+  color: var(--text-tertiary);
+  font-size: 1.2rem;
+  font-weight: 300;
+  margin: 0 2px;
+  user-select: none;
+}
+
+.otp-digit {
+  width: 46px;
+  height: 56px;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: inherit;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  -webkit-appearance: none;
+  appearance: none;
+  caret-color: var(--accent);
+}
+
+.otp-digit:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  background: var(--surface-3);
+}
+
+.otp-digit.filled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.otp-digit.error {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-glow);
+  animation: otpShake 0.4s ease;
+}
+
+.otp-digit.success {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-glow);
+}
+
+@keyframes otpShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+@media (max-width: 480px) {
+  .otp-digit {
+    width: 40px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+
+  .otp-inputs {
+    gap: 6px;
+  }
+}
 .phone-row {
   display: flex;
   gap: 8px;

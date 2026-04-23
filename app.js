@@ -90,24 +90,124 @@ $("phone-number").addEventListener("keydown", e => {
 });
 
 $("verify-otp-btn").addEventListener("click", async () => {
-  const code = $("otp-code").value.trim();
+  const digits = document.querySelectorAll(".otp-digit");
+  const code = Array.from(digits).map(d => d.value).join("");
   loginError.innerText = "";
+
+  if (code.length < 6) {
+    loginError.innerText = "Please enter all 6 digits.";
+    digits.forEach(d => { if (!d.value) d.classList.add("error"); });
+    setTimeout(() => digits.forEach(d => d.classList.remove("error")), 600);
+    return;
+  }
+
   const btn = $("verify-otp-btn");
   btn.innerHTML = '<div class="spinner"></div>';
-  try { await confirmationResult.confirm(code); }
-  catch { loginError.innerText = "Invalid OTP code."; }
-  finally { btn.innerText = "Verify"; }
+  try {
+    await confirmationResult.confirm(code);
+    digits.forEach(d => d.classList.add("success"));
+  } catch {
+    loginError.innerText = "Invalid OTP code.";
+    digits.forEach(d => {
+      d.value = "";
+      d.classList.remove("filled");
+      d.classList.add("error");
+    });
+    setTimeout(() => {
+      digits.forEach(d => d.classList.remove("error"));
+      digits[0].focus();
+    }, 600);
+  } finally {
+    btn.innerText = "Verify";
+  }
 });
 
-$("otp-code").addEventListener("keydown", e => {
-  if (e.key === "Enter") $("verify-otp-btn").click();
+// ── OTP Input Behavior ──
+const otpDigits = document.querySelectorAll(".otp-digit");
+
+otpDigits.forEach((input, idx) => {
+  // Only allow single digit
+  input.addEventListener("input", e => {
+    const val = input.value.replace(/[^0-9]/g, "");
+    input.value = val.slice(0, 1);
+
+    if (val) {
+      input.classList.add("filled");
+      // Auto-advance to next input
+      if (idx < 5) {
+        otpDigits[idx + 1].focus();
+      } else {
+        // Last digit entered — auto-submit
+        input.blur();
+        $("verify-otp-btn").click();
+      }
+    } else {
+      input.classList.remove("filled");
+    }
+  });
+
+  // Handle backspace navigation
+  input.addEventListener("keydown", e => {
+    if (e.key === "Backspace") {
+      if (!input.value && idx > 0) {
+        otpDigits[idx - 1].focus();
+        otpDigits[idx - 1].value = "";
+        otpDigits[idx - 1].classList.remove("filled");
+      } else {
+        input.value = "";
+        input.classList.remove("filled");
+      }
+    }
+    // Arrow key navigation
+    if (e.key === "ArrowLeft" && idx > 0) {
+      e.preventDefault();
+      otpDigits[idx - 1].focus();
+    }
+    if (e.key === "ArrowRight" && idx < 5) {
+      e.preventDefault();
+      otpDigits[idx + 1].focus();
+    }
+    // Enter to submit
+    if (e.key === "Enter") {
+      $("verify-otp-btn").click();
+    }
+  });
+
+  // Select text on focus for easy overwrite
+  input.addEventListener("focus", () => {
+    input.select();
+    input.classList.remove("error");
+  });
+
+  // Handle paste (spread digits across all inputs)
+  input.addEventListener("paste", e => {
+    e.preventDefault();
+    const pasted = (e.clipboardData.getData("text") || "").replace(/[^0-9]/g, "").slice(0, 6);
+    if (!pasted) return;
+    pasted.split("").forEach((char, i) => {
+      if (otpDigits[i]) {
+        otpDigits[i].value = char;
+        otpDigits[i].classList.add("filled");
+      }
+    });
+    // Focus last filled or submit
+    if (pasted.length >= 6) {
+      otpDigits[5].blur();
+      $("verify-otp-btn").click();
+    } else {
+      otpDigits[Math.min(pasted.length, 5)].focus();
+    }
+  });
 });
 
 $("cancel-otp-btn").addEventListener("click", () => {
   authOtp.classList.add("hidden");
   authMain.classList.remove("hidden");
   loginError.innerText = "";
-  $("otp-code").value = "";
+  otpDigits.forEach(d => {
+    d.value = "";
+    d.classList.remove("filled", "error", "success");
+  });
 });
 
 // ═══════ 3. GOOGLE AUTH ═══════
