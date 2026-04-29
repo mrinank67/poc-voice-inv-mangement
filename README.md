@@ -1,5 +1,11 @@
 # BolKhata — Smart Voice Inventory & Ledger
 
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-LLM-purple)
+![Whisper](https://img.shields.io/badge/Whisper-STT-412991?logo=openai&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000?style=flat&logo=vercel&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat&logo=firebase&logoColor=black)
+
 A lightning-fast, voice-first inventory management system designed to replace traditional pen-and-paper ledgers (*bahi-khatas*) for shopkeepers and small businesses.
 
 BolKhata prioritizes extreme low latency, ensuring the AI can process Hindi/Hinglish voice commands, display structured transaction receipts, and securely update the cloud database — just as fast as a shopkeeper can write it down.
