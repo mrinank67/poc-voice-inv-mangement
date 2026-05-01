@@ -528,6 +528,52 @@ input::placeholder {
 }
 
 /* ══════════════════════════════════════
+   APP VIEW — LAYOUT (ANTI-JUMP)
+   ══════════════════════════════════════ */
+#app-view {
+  height: 90vh;
+  max-height: 850px;
+  display: grid;
+  grid-template-rows: auto 1fr 1fr;
+  overflow: hidden;
+}
+
+#app-view .app-topbar {
+  grid-row: 1;
+}
+
+#app-view .mic-area {
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+}
+
+#app-view .result-area {
+  grid-row: 3;
+  overflow-y: auto;
+  margin-top: 0;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-right: 10px; /* Space for scrollbar */
+}
+
+/* Custom thin scrollbar for result area */
+#app-view .result-area::-webkit-scrollbar {
+  width: 4px;
+}
+#app-view .result-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+#app-view .result-area::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 4px;
+}
+
+/* ══════════════════════════════════════
    APP VIEW — HEADER
    ══════════════════════════════════════ */
 .app-topbar {
