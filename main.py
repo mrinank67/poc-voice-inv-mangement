@@ -51,20 +51,6 @@ def init_firebase():
 
 db = init_firebase()
 
-
-brand_to_item_map = {
-    "colgate": "toothpaste",
-    "pepsodent": "toothpaste",
-    "dant kanti": "toothpaste",
-    "lux": "soap",
-    "lifebuoy": "soap",
-    "dettol": "soap",
-    "maggi": "noodles",
-    "yippee": "noodles",
-}
-standard_items = list(brand_to_item_map.keys())
-
-
 @app.get("/config")
 async def get_config():
     return {
@@ -186,6 +172,10 @@ async def process_voice(
         # LLM returned a single flat transaction instead of an array
         transactions = [intent]
     hinglish_text = intent.get("hinglish_text", hindi_text)
+
+    # Fetch dynamic inventory to enrich fuzzy matching
+    stock_docs = list(user_stock_ref.stream())
+    all_fuzzy_candidates = [doc.id for doc in stock_docs]
 
     # Structured result groups keyed by action type
     result_groups = {}
@@ -358,9 +348,15 @@ async def process_voice(
 
         raw_item = raw_item.lower()
 
-        # Fuzzy Match
-        best_match, score = process.extractOne(raw_item, standard_items)
-        standard_item = brand_to_item_map[best_match] if score > 70 else raw_item
+        # Dynamic Fuzzy Match
+        if all_fuzzy_candidates:
+            best_match, score = process.extractOne(raw_item, all_fuzzy_candidates)
+            if score > 70:
+                standard_item = best_match
+            else:
+                standard_item = raw_item
+        else:
+            standard_item = raw_item
 
         stock_doc_ref = user_stock_ref.document(standard_item)
         stock_doc = stock_doc_ref.get()
