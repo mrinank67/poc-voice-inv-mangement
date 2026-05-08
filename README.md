@@ -24,7 +24,7 @@ BolKhata prioritizes extreme low latency, ensuring the AI can process Hindi/Hing
 ## Example Voice Commands
 
 | Intent | Example |
-|--------|---------|
+| -------- | --------- |
 | **Standard Sale** | *"Do colgate aur ek maggi de do."* |
 | **Contextual Sale** | *"Nehru apartment wale Sharma ji ko 2 maggi bech di."* |
 | **Restock** | *"Paanch naye lux aaye hain."* |
@@ -39,7 +39,7 @@ BolKhata prioritizes extreme low latency, ensuring the AI can process Hindi/Hing
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+| ------- | ---------- |
 | **Frontend** | Vanilla HTML, CSS, JS (modular architecture) |
 | **Backend** | FastAPI (Python) on Vercel serverless |
 | **Database & Auth** | Firebase Firestore & Firebase Authentication |
