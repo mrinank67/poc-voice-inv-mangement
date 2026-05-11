@@ -43,6 +43,10 @@
       "dest": "/main.py"
     },
     {
+      "src": "/confirm_clear_inventory",
+      "dest": "/main.py"
+    },
+    {
       "src": "/app.js",
       "dest": "/app.js"
     },

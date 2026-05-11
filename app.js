@@ -394,6 +394,16 @@ function buildResultHTML(results, errors) {
       }
       html += '</tbody></table></div>';
     }
+    // Confirmation prompt for destructive actions
+    if (group.requires_confirmation) {
+      html += `<div class="confirm-prompt" data-action="${group.action}">
+        <p class="confirm-message">${group.confirmation_message}</p>
+        <div class="confirm-buttons">
+          <button class="confirm-yes-btn" data-action="${group.action}">🗑️ Yes, Delete All</button>
+          <button class="confirm-no-btn" data-action="${group.action}">Cancel</button>
+        </div>
+      </div>`;
+    }
     html += '</div>';
   }
   if (errors.length > 0) {
@@ -409,6 +419,49 @@ function buildResultHTML(results, errors) {
 function renderResults(results, errors) {
   const html = buildResultHTML(results, errors);
   resultEl.innerHTML = html || '<div class="result-placeholder">No results</div>';
+
+  // Wire up confirmation buttons
+  resultEl.querySelectorAll('.confirm-yes-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const prompt = btn.closest('.confirm-prompt');
+      const card = btn.closest('.result-card');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div>';
+      prompt.querySelector('.confirm-no-btn').disabled = true;
+
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(`${API}/confirm_clear_inventory`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        // Replace the card content with success/failure message
+        card.querySelector('.result-card-header .result-card-title').textContent = 'Inventory Cleared';
+        card.querySelector('.result-card-header .result-card-icon').textContent = '🗑️';
+        prompt.innerHTML = `<div class="confirm-result confirm-success">${data.message}</div>`;
+      } catch {
+        prompt.innerHTML = '<div class="confirm-result confirm-error">❌ Failed to clear inventory. Please try again.</div>';
+      }
+    });
+  });
+
+  resultEl.querySelectorAll('.confirm-no-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.result-card');
+      card.querySelector('.result-card-header .result-card-title').textContent = 'Deletion Cancelled';
+      card.querySelector('.result-card-header .result-card-icon').textContent = '🚫';
+      const prompt = btn.closest('.confirm-prompt');
+      prompt.innerHTML = '<div class="confirm-result confirm-cancelled">Inventory deletion cancelled.</div>';
+
+      // Auto-dismiss the card after 5 seconds
+      setTimeout(() => {
+        card.classList.add('fade-out');
+        card.addEventListener('animationend', () => card.remove());
+      }, 5000);
+    });
+  });
 }
 
 // ═══════ 7. HISTORY (Firestore-backed) ═══════

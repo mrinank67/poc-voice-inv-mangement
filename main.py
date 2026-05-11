@@ -247,20 +247,24 @@ async def process_voice(
                 group["empty_message"] = "Inventory is empty. No items added yet."
             continue
 
-        # --- Handle Clear Entire Inventory ---
+        # --- Handle Clear Entire Inventory (requires confirmation) ---
         if action == "clear_inventory":
-            group = get_group(
-                "clear_inventory", "Inventory Cleared", "🗑️", ["Action", "Status"]
-            )
             all_docs = list(user_stock_ref.stream())
 
             if all_docs:
-                for doc in all_docs:
-                    doc.reference.delete()
-                group["rows"].append(
-                    {"Action": "Delete all items", "Status": "✅ Cleared"}
+                item_count = len(all_docs)
+                group = get_group(
+                    "clear_inventory", "⚠️ Confirm Inventory Deletion", "🗑️", ["Action", "Items"]
                 )
+                group["rows"].append(
+                    {"Action": "Delete ALL inventory", "Items": f"{item_count} items"}
+                )
+                group["requires_confirmation"] = True
+                group["confirmation_message"] = f"Are you sure you want to delete all {item_count} items from your inventory? This action cannot be undone."
             else:
+                group = get_group(
+                    "clear_inventory", "Inventory Cleared", "🗑️", ["Action", "Status"]
+                )
                 group["empty_message"] = "Inventory is already empty."
             continue
 
@@ -523,6 +527,23 @@ def verify_token(authorization: str):
         return decoded["uid"]
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid Authentication Token")
+
+
+
+# Confirmed clear inventory endpoint
+@app.post("/confirm_clear_inventory")
+async def confirm_clear_inventory(authorization: str = Header(None)):
+    uid = verify_token(authorization)
+    user_stock_ref = db.collection("users").document(uid).collection("stock")
+    all_docs = list(user_stock_ref.stream())
+
+    if not all_docs:
+        return {"status": "success", "message": "Inventory is already empty.", "deleted_count": 0}
+
+    for doc in all_docs:
+        doc.reference.delete()
+
+    return {"status": "success", "message": f"✅ Cleared {len(all_docs)} items from inventory.", "deleted_count": len(all_docs)}
 
 
 @app.get("/history")
