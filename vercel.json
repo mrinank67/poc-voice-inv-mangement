@@ -47,6 +47,10 @@
       "dest": "/main.py"
     },
     {
+      "src": "/inventory",
+      "dest": "/main.py"
+    },
+    {
       "src": "/app.js",
       "dest": "/app.js"
     },
