@@ -18,7 +18,9 @@ BolKhata prioritizes extreme low latency, ensuring the AI can process Hindi/Hing
 - **Dynamic Fuzzy Matching:** No hardcoded aliases! The system instantly fetches your live inventory and fuzzy-matches spoken slang or errors to your exact stored items, automatically adapting as you add new stock.
 - **Customer Order & Udhaar Tracking:** Seamlessly separates general orders (*"Ramesh Delhi ko bech diya"*) from credit ledgers (*"Ramesh Delhi ke khate me likh do"*). Query specific customer histories using their exact differentiating context.
 - **Multi-Tenant Security:** Firebase Auth (Phone/OTP, Google, Email) ensures every shopkeeper's inventory and history is strictly siloed and private.
-- **Smart Dashboard & History:** Cleanly formatted tables for every transaction, with a sliding drawer keeping track of the last 50 transactions for easy auditing.
+- **Multi-Page App & Navigation Drawer:** Left-sliding navigation drawer with dedicated pages for Voice Commands, a Live Inventory Dashboard, and Transaction History.
+- **Live Inventory Dashboard:** Visual, responsive grid tiles displaying real-time stock levels, automatically color-coded for low or out-of-stock items, fetched from a new dedicated backend endpoint.
+- **Smart History:** Cleanly formatted tables for every transaction, keeping track of the last 50 transactions for easy auditing.
 - **Progressive Web App:** Installable on mobile and desktop with offline shell caching, home screen icon, and standalone app mode — no app store required.
 
 ## Example Voice Commands
