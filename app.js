@@ -61,7 +61,12 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-$("logout-btn").addEventListener("click", () => signOut(auth));
+$("logout-btn").addEventListener("click", () => {
+  if (confirm("Are you sure you want to log out?")) {
+    closeDrawer();
+    signOut(auth);
+  }
+});
 
 // ═══════ 2. PHONE AUTH ═══════
 window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
