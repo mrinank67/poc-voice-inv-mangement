@@ -363,6 +363,17 @@ input::placeholder {
   box-shadow: var(--shadow-btn), 0 6px 20px rgba(99,102,241,0.35);
 }
 
+.btn-danger {
+  background: var(--red);
+  color: #fff;
+  box-shadow: var(--shadow-btn), 0 4px 12px rgba(239,68,68,0.25);
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+  box-shadow: var(--shadow-btn), 0 6px 20px rgba(239,68,68,0.35);
+}
+
 .btn-outline {
   background: var(--surface-2);
   color: var(--text-primary);
@@ -1520,4 +1531,69 @@ input[type="number"] {
 .grecaptcha-badge {
   visibility: hidden !important;
   display: none !important;
+}
+
+/* ══════════════════════════════════════
+   MODAL (LOGOUT POPUP)
+   ══════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 28px 24px;
+  width: 90%;
+  max-width: 320px;
+  box-shadow: var(--shadow-card);
+  transform: scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+}
+
+.modal-overlay.open .modal-card {
+  transform: scale(1);
+}
+
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.modal-message {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-actions .btn {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 0.9rem;
 }

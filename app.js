@@ -61,11 +61,20 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
+const logoutModal = $("logout-modal");
+
 $("logout-btn").addEventListener("click", () => {
-  if (confirm("Are you sure you want to log out?")) {
-    closeDrawer();
-    signOut(auth);
-  }
+  closeDrawer();
+  logoutModal.classList.add("open");
+});
+
+$("modal-cancel-btn").addEventListener("click", () => {
+  logoutModal.classList.remove("open");
+});
+
+$("modal-logout-btn").addEventListener("click", () => {
+  logoutModal.classList.remove("open");
+  signOut(auth);
 });
 
 // ═══════ 2. PHONE AUTH ═══════
