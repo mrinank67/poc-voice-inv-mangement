@@ -1,4 +1,4 @@
-const CACHE_NAME = "bolkhata-v1";
+const CACHE_NAME = "bolkhata-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
@@ -34,7 +34,9 @@ self.addEventListener("fetch", e => {
   if (
     url.pathname.startsWith("/process_voice") ||
     url.pathname.startsWith("/config") ||
-    url.pathname.startsWith("/history")
+    url.pathname.startsWith("/history") ||
+    url.pathname.startsWith("/inventory") ||
+    url.pathname.startsWith("/confirm_clear_inventory")
   ) {
     return;
   }
