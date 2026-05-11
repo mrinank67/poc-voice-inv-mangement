@@ -216,7 +216,6 @@ body::before {
     overflow-y: auto;
   }
 
-  /* Scale down and hide some decorative icons on mobile */
   .bg-decor .icon {
     font-size: 4rem !important;
   }
@@ -232,6 +231,16 @@ body::before {
   .bg-decor .icon:nth-child(2) { font-size: 4.5rem !important; }
   .bg-decor .icon:nth-child(3) { font-size: 4rem !important; }
   .bg-decor .icon:nth-child(4) { font-size: 5rem !important; }
+
+  .otp-digit {
+    width: 40px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+
+  .otp-inputs {
+    gap: 6px;
+  }
 }
 
 /* ══════════════════════════════════════
@@ -426,10 +435,6 @@ input::placeholder {
 }
 
 /* ══════════════════════════════════════
-   PHONE INPUT ROW
-   ══════════════════════════════════════ */
-
-/* ══════════════════════════════════════
    OTP DIGIT INPUTS
    ══════════════════════════════════════ */
 .otp-sub {
@@ -502,17 +507,6 @@ input::placeholder {
   80% { transform: translateX(4px); }
 }
 
-@media (max-width: 480px) {
-  .otp-digit {
-    width: 40px;
-    height: 50px;
-    font-size: 1.2rem;
-  }
-
-  .otp-inputs {
-    gap: 6px;
-  }
-}
 .phone-row {
   display: flex;
   gap: 8px;
@@ -625,18 +619,9 @@ input::placeholder {
   font-size: 1.15rem;
 }
 
-/* (logout button is now in the nav drawer) */
-
 /* ══════════════════════════════════════
    MICROPHONE BUTTON
    ══════════════════════════════════════ */
-.mic-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
-}
-
 .mic-wrapper {
   position: relative;
   width: 140px;
@@ -726,9 +711,6 @@ input::placeholder {
 /* ══════════════════════════════════════
    RESULT AREA
    ══════════════════════════════════════ */
-.result-area {
-  margin-top: 20px;
-}
 
 .result-label {
   font-size: 0.7rem;
@@ -852,15 +834,6 @@ input::placeholder {
   font-size: 0.9rem;
   line-height: 1.5;
 }
-
-.heard-text {
-  font-size: 0.8rem;
-  color: var(--text-tertiary);
-  margin-bottom: 10px;
-  font-style: italic;
-}
-
-.heard-text:empty { display: none; }
 
 /* Horizontal scroll for tables on tiny screens */
 .table-scroll {
