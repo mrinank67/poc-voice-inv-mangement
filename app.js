@@ -367,7 +367,7 @@ window.addEventListener("keyup", e => {
 // ═══════ 6. TABLE RENDERER ═══════
 const numericColumns = new Set(["#", "Stock", "Qty", "Sold", "Added", "Previous", "Current", "Current Stock", "Quantity Owed"]);
 
-function buildResultHTML(results, errors) {
+function buildResultHTML(results, errors, { isHistory = false } = {}) {
   let html = '';
   for (const group of results) {
     html += '<div class="result-card">';
@@ -396,13 +396,17 @@ function buildResultHTML(results, errors) {
     }
     // Confirmation prompt for destructive actions
     if (group.requires_confirmation) {
-      html += `<div class="confirm-prompt" data-action="${group.action}">
-        <p class="confirm-message">${group.confirmation_message}</p>
-        <div class="confirm-buttons">
-          <button class="confirm-yes-btn" data-action="${group.action}">🗑️ Yes, Delete All</button>
-          <button class="confirm-no-btn" data-action="${group.action}">Cancel</button>
-        </div>
-      </div>`;
+      if (isHistory) {
+        html += '<div class="confirm-result confirm-cancelled" style="padding:12px 16px;">Inventory deletion was attempted.</div>';
+      } else {
+        html += `<div class="confirm-prompt" data-action="${group.action}">
+          <p class="confirm-message">${group.confirmation_message}</p>
+          <div class="confirm-buttons">
+            <button class="confirm-yes-btn" data-action="${group.action}">🗑️ Yes, Delete All</button>
+            <button class="confirm-no-btn" data-action="${group.action}">Cancel</button>
+          </div>
+        </div>`;
+      }
     }
     html += '</div>';
   }
@@ -495,7 +499,7 @@ async function loadHistory() {
     for (const entry of history) {
       html += '<div class="history-entry">';
       html += `<div class="history-timestamp">${formatTime(entry.timestamp)}</div>`;
-      html += buildResultHTML(entry.results || [], entry.errors || []);
+      html += buildResultHTML(entry.results || [], entry.errors || [], { isHistory: true });
       html += '</div>';
     }
     drawerBody.innerHTML = html;
