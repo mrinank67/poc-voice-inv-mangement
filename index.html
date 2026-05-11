@@ -105,18 +105,41 @@
     </div>
 
     <!-- ═══════════ APP VIEW ═══════════ -->
-    <!-- HISTORY DRAWER -->
+    <!-- NAVIGATION DRAWER (slides from left) -->
     <div id="drawer-overlay" class="drawer-overlay">
       <div class="drawer">
         <div class="drawer-header">
-          <h3>📜 Transaction History</h3>
+          <div class="brand">
+            <div class="brand-icon"><img src="/icons/icon-192.png" alt="BolKhata" style="width:100%;height:100%;border-radius:12px;object-fit:cover;" /></div>
+            <div class="brand-name">BolKhata</div>
+          </div>
           <button id="drawer-close" class="drawer-close">✕</button>
         </div>
-        <div id="drawer-body" class="drawer-body">
-          <div class="history-empty">No transactions yet.<br>Your history will appear here.</div>
-        </div>
+        <nav class="drawer-nav">
+          <button class="nav-item active" data-page="voice">
+            <span class="nav-icon">🎙️</span>
+            <span class="nav-label">Voice</span>
+          </button>
+          <button class="nav-item" data-page="dashboard">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Dashboard</span>
+          </button>
+          <button class="nav-item" data-page="history">
+            <span class="nav-icon">📜</span>
+            <span class="nav-label">History</span>
+          </button>
+        </nav>
         <div class="drawer-footer">
-          <button id="clear-history-btn" class="btn btn-ghost" style="color:var(--red); font-size:0.8rem;">Clear History</button>
+          <div id="drawer-user-info" class="drawer-user-info">
+            <div class="drawer-user-avatar">👤</div>
+            <div class="drawer-user-details">
+              <div id="drawer-user-name" class="drawer-user-name">User</div>
+              <div id="drawer-user-email" class="drawer-user-email"></div>
+            </div>
+          </div>
+          <button id="logout-btn" class="drawer-logout-btn">
+            <span>🚪</span> Log out
+          </button>
         </div>
       </div>
     </div>
@@ -130,22 +153,49 @@
           <div class="brand-icon"><img src="/icons/icon-192.png" alt="BolKhata" style="width:100%;height:100%;border-radius:12px;object-fit:cover;" /></div>
           <div class="brand-name">BolKhata</div>
         </div>
-        <button id="logout-btn" class="btn-logout">Log out</button>
+        <div id="page-title" class="page-title">Voice</div>
       </div>
 
-      <div class="mic-area">
-        <div class="mic-wrapper">
-          <button id="recordBtn" class="mic-btn">🎙️</button>
-          <div class="mic-ring"></div>
-          <div class="mic-ring-2"></div>
+      <!-- PAGE: Voice -->
+      <div id="page-voice" class="page-container">
+        <div class="mic-area">
+          <div class="mic-wrapper">
+            <button id="recordBtn" class="mic-btn">🎙️</button>
+            <div class="mic-ring"></div>
+            <div class="mic-ring-2"></div>
+          </div>
+          <div id="status" class="mic-hint">Hold to speak</div>
         </div>
-        <div id="status" class="mic-hint">Hold to speak</div>
+
+        <div class="result-area">
+          <div class="result-label">Response</div>
+          <div id="result" class="result-container">
+            <div class="result-placeholder">Tap and hold the mic, then speak naturally — e.g. "Saara stock dikhao" or "10 soap bech diya"</div>
+          </div>
+        </div>
       </div>
 
-      <div class="result-area">
-        <div class="result-label">Response</div>
-        <div id="result" class="result-container">
-          <div class="result-placeholder">Tap and hold the mic, then speak naturally — e.g. "Saara stock dikhao" or "10 soap bech diya"</div>
+      <!-- PAGE: Dashboard -->
+      <div id="page-dashboard" class="page-container hidden">
+        <div class="dashboard-header">
+          <h2 class="dashboard-title">📊 Live Inventory</h2>
+          <button id="dashboard-refresh-btn" class="dashboard-refresh-btn" aria-label="Refresh">↻</button>
+        </div>
+        <div id="inventory-grid" class="inventory-grid">
+          <div class="inventory-empty">Loading inventory…</div>
+        </div>
+      </div>
+
+      <!-- PAGE: History -->
+      <div id="page-history" class="page-container hidden">
+        <div class="history-page-header">
+          <h2 class="history-page-title">📜 Transaction History</h2>
+        </div>
+        <div id="history-body" class="history-body">
+          <div class="history-empty">No transactions yet.<br>Your history will appear here.</div>
+        </div>
+        <div class="history-page-footer">
+          <button id="clear-history-btn" class="btn btn-ghost" style="color:var(--red); font-size:0.8rem;">Clear History</button>
         </div>
       </div>
     </div>

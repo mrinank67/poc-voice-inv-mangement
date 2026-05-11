@@ -30,7 +30,9 @@ const authMain   = $("auth-main");
 const authOtp    = $("auth-otp");
 const authEmail  = $("auth-email");
 const drawerOverlay = $("drawer-overlay");
-const drawerBody = $("drawer-body");
+const historyBody = $("history-body");
+const inventoryGrid = $("inventory-grid");
+const pageTitleEl = $("page-title");
 
 let currentToken = null;
 let currentUid = null;
@@ -46,7 +48,11 @@ onAuthStateChanged(auth, async user => {
     loginError.innerText = "";
     loginView.classList.add("hidden");
     appView.classList.remove("hidden");
-    loadHistory();
+
+    // Update drawer user info
+    const displayName = user.displayName || user.email || user.phoneNumber || "User";
+    $("drawer-user-name").textContent = displayName;
+    $("drawer-user-email").textContent = user.email || user.phoneNumber || "";
   } else {
     currentToken = null;
     currentUid = null;
@@ -468,7 +474,58 @@ function renderResults(results, errors) {
   });
 }
 
-// ═══════ 7. HISTORY (Firestore-backed) ═══════
+// ═══════ 7. PAGE NAVIGATION ═══════
+let currentPage = "voice";
+const pages = ["voice", "dashboard", "history"];
+const pageTitles = { voice: "Voice", dashboard: "Dashboard", history: "History" };
+
+function navigateTo(page) {
+  if (!pages.includes(page)) return;
+  currentPage = page;
+
+  // Toggle page visibility
+  pages.forEach(p => {
+    const el = $(`page-${p}`);
+    if (el) el.classList.toggle("hidden", p !== page);
+  });
+
+  // Update nav active state
+  document.querySelectorAll(".nav-item").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  });
+
+  // Update page title in topbar
+  pageTitleEl.textContent = pageTitles[page] || page;
+
+  // Close drawer
+  closeDrawer();
+
+  // Load data for the target page
+  if (page === "dashboard") loadDashboardInventory();
+  if (page === "history") loadHistory();
+}
+
+// Wire nav items
+document.querySelectorAll(".nav-item").forEach(btn => {
+  btn.addEventListener("click", () => navigateTo(btn.dataset.page));
+});
+
+// ═══════ 8. DRAWER CONTROLS ═══════
+function openDrawer() {
+  drawerOverlay.classList.add("open");
+}
+
+function closeDrawer() {
+  drawerOverlay.classList.remove("open");
+}
+
+$("menu-btn").addEventListener("click", openDrawer);
+$("drawer-close").addEventListener("click", closeDrawer);
+drawerOverlay.addEventListener("click", e => {
+  if (e.target === drawerOverlay) closeDrawer();
+});
+
+// ═══════ 9. HISTORY PAGE ═══════
 function formatTime(isoStr) {
   if (!isoStr) return '';
   const d = new Date(isoStr);
@@ -482,7 +539,7 @@ function formatTime(isoStr) {
 }
 
 async function loadHistory() {
-  drawerBody.innerHTML = '<div class="history-empty">Loading...</div>';
+  historyBody.innerHTML = '<div class="history-empty">Loading...</div>';
   try {
     const token = await auth.currentUser.getIdToken();
     const res = await fetch(`${API}/history`, {
@@ -492,7 +549,7 @@ async function loadHistory() {
     const history = data.history || [];
 
     if (history.length === 0) {
-      drawerBody.innerHTML = '<div class="history-empty">No transactions yet.<br>Your history will appear here.</div>';
+      historyBody.innerHTML = '<div class="history-empty">No transactions yet.<br>Your history will appear here.</div>';
       return;
     }
     let html = '';
@@ -502,25 +559,11 @@ async function loadHistory() {
       html += buildResultHTML(entry.results || [], entry.errors || [], { isHistory: true });
       html += '</div>';
     }
-    drawerBody.innerHTML = html;
+    historyBody.innerHTML = html;
   } catch {
-    drawerBody.innerHTML = '<div class="history-empty">Could not load history.</div>';
+    historyBody.innerHTML = '<div class="history-empty">Could not load history.</div>';
   }
 }
-
-// Drawer controls
-$("menu-btn").addEventListener("click", () => {
-  loadHistory();
-  drawerOverlay.classList.add("open");
-});
-
-$("drawer-close").addEventListener("click", () => {
-  drawerOverlay.classList.remove("open");
-});
-
-drawerOverlay.addEventListener("click", e => {
-  if (e.target === drawerOverlay) drawerOverlay.classList.remove("open");
-});
 
 $("clear-history-btn").addEventListener("click", async () => {
   try {
@@ -535,7 +578,50 @@ $("clear-history-btn").addEventListener("click", async () => {
   }
 });
 
-// ═══════ 8. PWA SERVICE WORKER ═══════
+// ═══════ 10. DASHBOARD — LIVE INVENTORY ═══════
+async function loadDashboardInventory() {
+  inventoryGrid.innerHTML = '<div class="inventory-empty">Loading inventory…</div>';
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch(`${API}/inventory`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    const items = data.inventory || [];
+
+    if (items.length === 0) {
+      inventoryGrid.innerHTML = '<div class="inventory-empty">No items in inventory yet.<br>Use Voice to add stock.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const item of items) {
+      const qty = item.quantity ?? 0;
+      let qtyClass = '';
+      if (qty === 0) qtyClass = 'out-of-stock';
+      else if (qty <= 5) qtyClass = 'low-stock';
+
+      html += `<div class="inventory-tile">
+        <div class="inventory-tile-name">${item.item}</div>
+        <div class="inventory-tile-qty ${qtyClass}">${qty}</div>
+      </div>`;
+    }
+    html += `<div class="inventory-total">${items.length} item${items.length !== 1 ? 's' : ''} in stock</div>`;
+    inventoryGrid.innerHTML = html;
+  } catch {
+    inventoryGrid.innerHTML = '<div class="inventory-empty">Could not load inventory.</div>';
+  }
+}
+
+$("dashboard-refresh-btn").addEventListener("click", () => {
+  const btn = $("dashboard-refresh-btn");
+  btn.classList.add("spinning");
+  loadDashboardInventory().finally(() => {
+    setTimeout(() => btn.classList.remove("spinning"), 800);
+  });
+});
+
+// ═══════ 11. PWA SERVICE WORKER ═══════
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(() => {});
 }

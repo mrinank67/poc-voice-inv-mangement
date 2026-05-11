@@ -546,6 +546,21 @@ async def confirm_clear_inventory(authorization: str = Header(None)):
     return {"status": "success", "message": f"✅ Cleared {len(all_docs)} items from inventory.", "deleted_count": len(all_docs)}
 
 
+@app.get("/inventory")
+async def get_inventory(authorization: str = Header(None)):
+    uid = verify_token(authorization)
+    user_stock_ref = db.collection("users").document(uid).collection("stock")
+    docs = user_stock_ref.stream()
+    inventory = []
+    for doc in docs:
+        data = doc.to_dict()
+        inventory.append({
+            "item": doc.id,
+            "quantity": data.get("quantity", 0),
+        })
+    return {"inventory": inventory}
+
+
 @app.get("/history")
 async def get_history(authorization: str = Header(None)):
     uid = verify_token(authorization)
