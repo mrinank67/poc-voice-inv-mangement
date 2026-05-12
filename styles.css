@@ -1326,12 +1326,24 @@ input::placeholder {
 }
 
 .dashboard-refresh-btn:active {
+  transform: scale(0.95);
+}
+
+.refresh-icon {
+  display: inline-block;
+  transition: transform var(--transition);
+}
+
+.dashboard-refresh-btn:active .refresh-icon {
   transform: rotate(180deg);
 }
 
 .dashboard-refresh-btn.spinning {
-  animation: spin 0.8s ease;
   pointer-events: none;
+}
+
+.dashboard-refresh-btn.spinning .refresh-icon {
+  animation: spin 0.8s ease;
 }
 
 /* Inventory Grid */
