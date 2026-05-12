@@ -191,7 +191,15 @@
       <div id="page-dashboard" class="page-container hidden">
         <div class="dashboard-header">
           <h2 class="dashboard-title">📊 Live Inventory</h2>
-          <button id="dashboard-refresh-btn" class="dashboard-refresh-btn" aria-label="Refresh"><span class="refresh-icon">↻</span></button>
+          <div class="dashboard-actions">
+            <select id="inventory-sort" class="inventory-sort-select">
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="stock-asc">Stock (Low-High)</option>
+              <option value="stock-desc">Stock (High-Low)</option>
+            </select>
+            <button id="dashboard-refresh-btn" class="dashboard-refresh-btn" aria-label="Refresh"><span class="refresh-icon">↻</span></button>
+          </div>
         </div>
         <div id="inventory-grid" class="inventory-grid">
           <div class="inventory-empty">Loading inventory…</div>

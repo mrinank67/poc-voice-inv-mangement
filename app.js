@@ -593,6 +593,9 @@ $("clear-history-btn").addEventListener("click", async () => {
 });
 
 // ═══════ 10. DASHBOARD — LIVE INVENTORY ═══════
+let currentInventory = [];
+let currentSort = 'name-asc';
+
 async function loadDashboardInventory() {
   inventoryGrid.innerHTML = '<div class="inventory-empty">Loading inventory…</div>';
   try {
@@ -601,31 +604,50 @@ async function loadDashboardInventory() {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
-    const items = data.inventory || [];
-
-    if (items.length === 0) {
-      inventoryGrid.innerHTML = '<div class="inventory-empty">No items in inventory yet.<br>Use Voice to add stock.</div>';
-      return;
-    }
-
-    let html = '';
-    for (const item of items) {
-      const qty = item.quantity ?? 0;
-      let qtyClass = '';
-      if (qty === 0) qtyClass = 'out-of-stock';
-      else if (qty <= 5) qtyClass = 'low-stock';
-
-      html += `<div class="inventory-tile">
-        <div class="inventory-tile-name">${item.item}</div>
-        <div class="inventory-tile-qty ${qtyClass}">${qty}</div>
-      </div>`;
-    }
-    html += `<div class="inventory-total">${items.length} item${items.length !== 1 ? 's' : ''} in stock</div>`;
-    inventoryGrid.innerHTML = html;
+    currentInventory = data.inventory || [];
+    renderDashboardInventory();
   } catch {
     inventoryGrid.innerHTML = '<div class="inventory-empty">Could not load inventory.</div>';
   }
 }
+
+function renderDashboardInventory() {
+  if (currentInventory.length === 0) {
+    inventoryGrid.innerHTML = '<div class="inventory-empty">No items in inventory yet.<br>Use Voice to add stock.</div>';
+    return;
+  }
+
+  let items = [...currentInventory];
+  if (currentSort === 'name-asc') {
+    items.sort((a, b) => (a.item || '').localeCompare(b.item || ''));
+  } else if (currentSort === 'name-desc') {
+    items.sort((a, b) => (b.item || '').localeCompare(a.item || ''));
+  } else if (currentSort === 'stock-asc') {
+    items.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+  } else if (currentSort === 'stock-desc') {
+    items.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+  }
+
+  let html = '';
+  for (const item of items) {
+    const qty = item.quantity ?? 0;
+    let qtyClass = '';
+    if (qty === 0) qtyClass = 'out-of-stock';
+    else if (qty <= 5) qtyClass = 'low-stock';
+
+    html += `<div class="inventory-tile">
+      <div class="inventory-tile-name">${item.item}</div>
+      <div class="inventory-tile-qty ${qtyClass}">${qty}</div>
+    </div>`;
+  }
+  html += `<div class="inventory-total">${items.length} item${items.length !== 1 ? 's' : ''} in stock</div>`;
+  inventoryGrid.innerHTML = html;
+}
+
+$("inventory-sort").addEventListener("change", (e) => {
+  currentSort = e.target.value;
+  renderDashboardInventory();
+});
 
 $("dashboard-refresh-btn").addEventListener("click", () => {
   const btn = $("dashboard-refresh-btn");
