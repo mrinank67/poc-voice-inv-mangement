@@ -396,10 +396,16 @@ async def process_voice(
             new_qty = max(0, current_qty - qty)
         else:
             new_qty = current_qty + qty
-
         # Update Stock DB
-        stock_doc_ref.set({"quantity": new_qty, "item": standard_item}, merge=True)
-
+        update_data = {
+            "quantity": new_qty, 
+            "item": standard_item,
+            "updated_at": firestore.SERVER_TIMESTAMP
+        }
+        if not stock_doc.exists:
+            update_data["created_at"] = firestore.SERVER_TIMESTAMP
+            
+        stock_doc_ref.set(update_data, merge=True)
         title_name = f"{customer_name.capitalize()} ({customer_modifier})" if customer_modifier else customer_name.capitalize() if customer_name else ""
 
         # Build result row
@@ -554,9 +560,17 @@ async def get_inventory(authorization: str = Header(None)):
     inventory = []
     for doc in docs:
         data = doc.to_dict()
+        
+        ts_obj = data.get("updated_at") or data.get("created_at")
+        try:
+            ts = ts_obj.timestamp() * 1000 if ts_obj else 0
+        except AttributeError:
+            ts = 0
+            
         inventory.append({
             "item": doc.id,
             "quantity": data.get("quantity", 0),
+            "updated_at": ts,
         })
     return {"inventory": inventory}
 

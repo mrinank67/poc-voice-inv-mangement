@@ -626,6 +626,8 @@ function renderDashboardInventory() {
     items.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
   } else if (currentSort === 'stock-desc') {
     items.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+  } else if (currentSort === 'recent') {
+    items.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
   }
 
   let html = '';
